@@ -59,6 +59,7 @@ class PlantGUI:
         self.button_load = tk.Button(self.root, text="Load Plants", command=self.load_plants)
         self.button_load.pack()
         self.canvas.mpl_connect('button_press_event', self.on_click)
+
         if os.path.exists("window_size.json"):
             with open("window_size.json", "r") as f:
                 width, height = json.load(f)
@@ -71,7 +72,10 @@ class PlantGUI:
     def on_click(self, event):
         for i, plant in enumerate(self.manager.plants):
             if event.ydata > i - 0.5 and event.ydata < i + 0.5:
-                plant.harvested = True
+                if event.button == 1:  # Clic gauche pour marquer comme non récoltée
+                    plant.harvested = False
+                elif event.button == 3:  # Clic droit pour marquer comme récoltée
+                    plant.harvested = True
                 self.update_plot()
                 break
 
@@ -96,18 +100,26 @@ class PlantGUI:
         self.manager.load_plants("plants.pkl")
         self.update_plot()
 
+
+
+
     def update_plot(self):
         self.fig.clear()
         ax = self.fig.add_subplot(111)
         for i, plant in enumerate(self.manager.plants):
+            if not hasattr(plant, 'harvested'):
+                plant.harvested = False
             elapsed_days = (datetime.datetime.now() - plant.sowing_date).days
             remaining_days = max(0, plant.growing_days - elapsed_days)
             color = 'green' if remaining_days > 0 else 'red'
             if plant.harvested:
                 color = 'gray'
             ax.barh(i, elapsed_days, color=color)
-            ax.text(elapsed_days/2, i, f"{elapsed_days} jours depuis le semis, {remaining_days} jours restants", ha='center', va='center', color='white')
+            harvest_status = "Récoltée" if plant.harvested else "Non récoltée"
+            ax.text(0, i, f"{plant.name}: {elapsed_days} jours depuis le semis, {remaining_days} jours restants ({harvest_status})", ha='left', va='center', color='black', fontdict={'fontsize': 14, 'fontweight': 'bold'})
         self.canvas.draw()
+
+
 
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -128,4 +140,3 @@ if __name__ == "__main__":
     manager = PlantManager()
     gui = PlantGUI(manager)
     gui.run()
-
